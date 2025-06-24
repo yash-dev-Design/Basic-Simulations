@@ -23,6 +23,7 @@ A collection of console-based applications built using C and Java for learning, 
 - Console-based cart with product selection, price calculations
 - Quantity handling and total cost display
 - Menu-driven program structure
+- item-list, maincode, merge code were the files, dont get confused
 
 ## 💡 Learning Goals
 
