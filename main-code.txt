@@ -1,0 +1,125 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_ITEMS 10  // Maximum number of items in the trolley
+
+// Structure to store item details
+typedef struct {
+    char name[50];
+    float price;
+    int quantity;
+} Item;
+
+// Function prototypes
+void displayMenu();
+void addItem(Item trolley[], int *itemCount);
+void removeItem(Item trolley[], int *itemCount);
+void viewTrolley(Item trolley[], int itemCount);
+void calculateTotal(Item trolley[], int itemCount);
+
+int main() {
+    Item trolley[MAX_ITEMS];  // Array to store the trolley items
+    int itemCount = 0;        // Counter to keep track of items in the trolley
+    int choice;
+
+    while (1) {
+        // Display the shopping trolley menu
+        displayMenu();
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: addItem(trolley, &itemCount); break;
+            case 2: removeItem(trolley, &itemCount); break;
+            case 3: viewTrolley(trolley, itemCount); break;
+            case 4: calculateTotal(trolley, itemCount); break;
+            case 5: printf("Exiting the shopping trolley. Thank you!\n"); return 0;
+            default: printf("Invalid choice, please try again.\n");
+        }
+    }
+    return 0;
+}
+
+void displayMenu() {
+    printf("\nShopping Trolley Menu:\n");
+    printf("1. Add Item\n");
+    printf("2. Remove Item\n");
+    printf("3. View Trolley\n");
+    printf("4. Calculate Total\n");
+    printf("5. Exit\n");
+}
+
+void addItem(Item trolley[], int *itemCount) {
+    if (*itemCount >= MAX_ITEMS) {
+        printf("Your trolley is full, cannot add more items.\n");
+        return;
+    }
+
+    Item newItem;
+    printf("Enter item name: ");
+    getchar();  // To consume the leftover newline character
+    fgets(newItem.name, 50, stdin);
+    newItem.name[strcspn(newItem.name, "\n")] = 0;  // Remove the newline character
+
+    printf("Enter item price: ");
+    scanf("%f", &newItem.price);
+
+    printf("Enter item quantity: ");
+    scanf("%d", &newItem.quantity);
+
+    trolley[*itemCount] = newItem;
+    (*itemCount)++;
+    printf("Item added to trolley.\n");
+}
+
+void removeItem(Item trolley[], int *itemCount) {
+    if (*itemCount == 0) {
+        printf("Your trolley is empty, nothing to remove.\n");
+        return;
+    }
+
+    int index;
+    printf("Enter the index of the item to remove (0 to %d): ", *itemCount - 1);
+    scanf("%d", &index);
+
+    if (index < 0 || index >= *itemCount) {
+        printf("Invalid index.\n");
+        return;
+    }
+
+    // Shift items to fill the removed item
+    for (int i = index; i < *itemCount - 1; i++) {
+        trolley[i] = trolley[i + 1];
+    }
+
+    (*itemCount)--;
+    printf("Item removed from trolley.\n");
+}
+
+void viewTrolley(Item trolley[], int itemCount) {
+    if (itemCount == 0) {
+        printf("Your trolley is empty.\n");
+        return;
+    }
+
+    printf("\nItems in your trolley:\n");
+    printf("Index | Name                | Price  | Quantity\n");
+    printf("------------------------------------------------\n");
+    for (int i = 0; i < itemCount; i++) {
+        printf("%-5d | %-20s | %.2f  | %d\n", i, trolley[i].name, trolley[i].price, trolley[i].quantity);
+    }
+}
+
+void calculateTotal(Item trolley[], int itemCount) {
+    if (itemCount == 0) {
+        printf("Your trolley is empty. Total is 0.00\n");
+        return;
+    }
+
+    float total = 0.0;
+    for (int i = 0; i < itemCount; i++) {
+        total += trolley[i].price * trolley[i].quantity;
+    }
+
+    printf("Total amount: %.2f\n", total);
+}

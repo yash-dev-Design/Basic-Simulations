@@ -1,0 +1,249 @@
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Scanner;
+
+// Class representing a Patient
+class Patient 
+{
+    int id;
+    String name;
+    String disease;
+    double billAmount;
+
+    public Patient(int id, String name, String disease) 
+    {
+        this.id = id;
+        this.name = name;
+        this.disease = disease;
+        this.billAmount = 0.0; // Initial bill amount
+    }
+
+    @Override
+    public String toString() 
+    {
+        return "Patient ID: " + id + ", Name: " + name + ", Disease: " + disease + ", Bill: $" + billAmount;
+    }
+}
+
+// Class representing a Doctor
+class Doctor 
+{
+    int id;
+    String name;
+    String specialty;
+
+    public Doctor(int id, String name, String specialty) 
+    {
+        this.id = id;
+        this.name = name;
+        this.specialty = specialty;
+    }
+
+    @Override
+    public String toString() 
+    {
+        return "Doctor ID: " + id + ", Name: " + name + ", Specialty: " + specialty;
+    }
+}
+
+// Class representing a Hospital Management System
+class HospitalManagementSystem 
+{
+    ArrayList<Patient> patients = new ArrayList<>();
+    ArrayList<Doctor> doctors = new ArrayList<>();
+    HashMap<Integer, ArrayList<String>> treatmentHistory = new HashMap<>();
+
+    // Add a new patient
+    public void addPatient(int id, String name, String disease) 
+    {
+        patients.add(new Patient(id, name, disease));
+        treatmentHistory.put(id, new ArrayList<>()); // Initialize treatment history for the patient
+        System.out.println("Patient added successfully!");
+    }
+
+    // Add a new doctor
+    public void addDoctor(int id, String name, String specialty) 
+    {
+        doctors.add(new Doctor(id, name, specialty));
+        System.out.println("Doctor added successfully!");
+    }
+
+    // Display all patients
+    public void displayPatients() 
+    {
+        System.out.println("Patients List:");
+        for (Patient patient : patients) 
+        {
+            System.out.println(patient);
+        }
+    }
+
+    // Display all doctors
+    public void displayDoctors() 
+    {
+        System.out.println("Doctors List:");
+        for (Doctor doctor : doctors) 
+        {
+            System.out.println(doctor);
+        }
+    }
+
+    // Add treatment for a patient
+    public void addTreatment(int patientId, String treatment) 
+    {
+        for (Patient patient : patients) 
+        {
+            if (patient.id == patientId) 
+            {
+                treatmentHistory.get(patientId).add(treatment);
+                System.out.println("Treatment added for patient ID " + patientId + ": " + treatment);
+                return;
+            }
+        }
+        System.out.println("Patient not found!");
+    }
+
+    // Display treatment history for a patient
+    public void displayTreatmentHistory(int patientId) 
+    {
+        if (treatmentHistory.containsKey(patientId)) 
+        {
+            System.out.println("Treatment History for Patient ID " + patientId + ":");
+            for (String treatment : treatmentHistory.get(patientId)) 
+            {
+                System.out.println("- " + treatment);
+            }
+        } 
+        else 
+        {
+            System.out.println("Patient not found or no treatments recorded!");
+        }
+    }
+
+    // Generate bill for a patient
+    public void generateBill(int patientId, double amount) 
+    {
+        for (Patient patient : patients) 
+        {
+            if (patient.id == patientId) 
+            {
+                patient.billAmount += amount;
+                System.out.println("Bill updated for patient ID " + patientId + ". New total: $" + patient.billAmount);
+                return;
+            }
+        }
+        System.out.println("Patient not found!");
+    }
+
+    // Discharge a patient
+    public void dischargePatient(int id) 
+    {
+        patients.removeIf(patient -> patient.id == id);
+        treatmentHistory.remove(id); // Remove treatment history
+        System.out.println("Patient discharged successfully!");
+    }
+}
+
+// Main class
+public class main
+{
+    public static void main(String[] args) 
+    {
+        HospitalManagementSystem hospital = new HospitalManagementSystem();
+        Scanner scanner = new Scanner(System.in);
+        
+        System.out.print("ENTER LOGIN ID:");
+        int id=scanner.nextInt();
+        System.out.print("\nENTER LOGIN PASSWORD:");
+        int pass=scanner.nextInt();
+
+        while (true) 
+        {
+            System.out.println("\n--- Hospital Management System ---");
+            System.out.println("1. Add Patient");
+            System.out.println("2. Add Doctor");
+            System.out.println("3. Display Patients");
+            System.out.println("4. Display Doctors");
+            System.out.println("5. Add Treatment");
+            System.out.println("6. Display Treatment History");
+            System.out.println("7. Generate Bill");
+            System.out.println("8. Discharge Patient");
+            System.out.println("9. Exit");
+            System.out.print("Enter your choice: ");
+            int choice = scanner.nextInt();
+
+            switch (choice) 
+            {
+                case 1:
+                    System.out.print("Enter Patient ID: ");
+                    int pId = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    System.out.print("Enter Patient Name: ");
+                    String pName = scanner.nextLine();
+                    System.out.print("Enter Disease: ");
+                    String pDisease = scanner.nextLine();
+                    hospital.addPatient(pId, pName, pDisease);
+                    break;
+
+                case 2:
+                    System.out.print("Enter Doctor ID: ");
+                    int dId = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    System.out.print("Enter Doctor Name: ");
+                    String dName = scanner.nextLine();
+                    System.out.print("Enter Specialty: ");
+                    String dSpecialty = scanner.nextLine();
+                    hospital.addDoctor(dId, dName, dSpecialty);
+                    break;
+
+                case 3:
+                    hospital.displayPatients();
+                    break;
+
+                case 4:
+                    hospital.displayDoctors();
+                    break;
+
+                case 5:
+                    System.out.print("Enter Patient ID: ");
+                    int tPatientId = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    System.out.print("Enter Treatment Description: ");
+                    String treatment = scanner.nextLine();
+                    hospital.addTreatment(tPatientId, treatment);
+                    break;
+
+                case 6:
+                    System.out.print("Enter Patient ID: ");
+                    int thPatientId = scanner.nextInt();
+                    hospital.displayTreatmentHistory(thPatientId);
+                    break;
+
+                case 7:
+                    System.out.print("Enter Patient ID: ");
+                    int bPatientId = scanner.nextInt();
+                    System.out.print("Enter Bill Amount: ");
+                    double amount = scanner.nextDouble();
+                    hospital.generateBill(bPatientId, amount);
+                    break;
+
+                case 8:
+                    System.out.print("Enter Patient ID to discharge: ");
+                    int dischargeId = scanner.nextInt();
+                    hospital.dischargePatient(dischargeId);
+                    break;
+
+                case 9:
+                    System.out.println("Exiting...");
+                    scanner.close();
+                    return;
+
+                default:
+                    System.out.println("Invalid choice! Please try again.");
+            }
+        }
+    }
+}
+
+
+

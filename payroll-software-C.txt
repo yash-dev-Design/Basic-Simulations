@@ -1,0 +1,1743 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+// Constants
+#define MAX_NAME_LENGTH 50
+#define MAX_DEPT_LENGTH 30
+#define MAX_POSITION_LENGTH 30
+#define MAX_EMPLOYEES 100
+#define MAX_PATH 100
+#define MAX_PASSWORD_LENGTH 20
+
+// Tax brackets
+#define TAX_BRACKET_1 10000  // 10% tax
+#define TAX_BRACKET_2 30000  // 20% tax
+#define TAX_BRACKET_3 50000  // 30% tax
+
+// Leave types
+#define SICK_LEAVE 1
+#define VACATION 2
+#define UNPAID_LEAVE 3
+
+// Payment modes
+#define CASH 1
+#define BANK_TRANSFER 2
+#define CHECK 3
+
+// Performance ratings
+#define POOR 1
+#define AVERAGE 2
+#define GOOD 3
+#define EXCELLENT 4
+
+// Structures
+typedef struct {
+    int day;
+    int month;
+    int year;
+} Date;
+
+typedef struct {
+    int id;
+    char name[MAX_NAME_LENGTH];
+    char department[MAX_DEPT_LENGTH];
+    char position[MAX_POSITION_LENGTH];
+    float baseSalary;
+    int isHourly;
+    float hourlyRate;
+    int workingHoursPerDay;
+    int performanceRating;
+    int paymentMode;
+    int sickLeaveBalance;
+    int vacationBalance;
+} Employee;
+
+typedef struct {
+    int employeeId;
+    int month;
+    int year;
+    int daysPresent;
+    int daysAbsent;
+    float overtimeHours;
+    float bonusAmount;
+    float taxDeducted;
+    float netSalary;
+    float grossSalary;
+} PayrollRecord;
+
+typedef struct {
+    int employeeId;
+    int leaveType;
+    Date startDate;
+    Date endDate;
+    int numberOfDays;
+    int isApproved;
+} LeaveRecord;
+
+typedef struct {
+    int employeeId;
+    Date date;
+    int isPresent;
+    float hoursWorked;
+} AttendanceRecord;
+
+typedef struct {
+    char username[MAX_NAME_LENGTH];
+    char password[MAX_PASSWORD_LENGTH];
+    int isAdmin;
+} User;
+
+// Global variables
+Employee employees[MAX_EMPLOYEES];
+int employeeCount = 0;
+User currentUser;
+
+// Function prototypes
+void initializeSystem();
+void mainMenu();
+void adminMenu();
+void employeeMenu();
+void addEmployee();
+void viewEmployees();
+void searchEmployee();
+void updateEmployee();
+void deleteEmployee();
+void calculateSalary();
+void recordAttendance();
+void manageLeaves();
+void generatePayslip();
+void trackPerformance();
+void saveEmployeeData();
+void loadEmployeeData();
+void sortEmployees();
+int authenticateUser();
+void registerUser();
+float calculateTax(float salary);
+float calculateBonus(Employee emp);
+void processPayroll(int month, int year);
+void generatePayrollReport();
+void recordLeave();
+void approveLeave();
+void viewLeaveRequests();
+void viewAttendance();
+void exportPayslipToFile(PayrollRecord record, Employee emp);
+
+// Main function
+int main() {
+    initializeSystem();
+    
+    if (authenticateUser()) {
+        if (currentUser.isAdmin) {
+            adminMenu();
+        } else {
+            employeeMenu();
+        }
+    }
+    
+    return 0;
+}
+
+// Initialize the system
+void initializeSystem() {
+    loadEmployeeData();
+    printf("Employee Payroll System\n");
+    printf("----------------------\n");
+}
+
+// Authentication
+int authenticateUser() {
+    char username[MAX_NAME_LENGTH];
+    char password[MAX_PASSWORD_LENGTH];
+    FILE *fp;
+    User user;
+    int authenticated = 0;
+    
+    printf("\nLOGIN\n");
+    printf("Username: ");
+    scanf("%s", username);
+    printf("Password: ");
+    scanf("%s", password);
+    
+    fp = fopen("users.dat", "rb");
+    if (fp == NULL) {
+        printf("No users found. Creating admin account.\n");
+        strcpy(currentUser.username, username);
+        strcpy(currentUser.password, password);
+        currentUser.isAdmin = 1;
+        
+        fp = fopen("users.dat", "wb");
+        fwrite(&currentUser, sizeof(User), 1, fp);
+        fclose(fp);
+        return 1;
+    }
+    
+    while (fread(&user, sizeof(User), 1, fp)) {
+        if (strcmp(user.username, username) == 0 && strcmp(user.password, password) == 0) {
+            authenticated = 1;
+            currentUser = user;
+            break;
+        }
+    }
+    
+    fclose(fp);
+    
+    if (!authenticated) {
+        printf("Invalid username or password.\n");
+        return 0;
+    }
+    
+    return 1;
+}
+
+// Register a new user
+void registerUser() {
+    User newUser;
+    FILE *fp;
+    
+    printf("\nREGISTER NEW USER\n");
+    printf("Username: ");
+    scanf("%s", newUser.username);
+    printf("Password: ");
+    scanf("%s", newUser.password);
+    printf("Is Admin (1 for Yes, 0 for No): ");
+    scanf("%d", &newUser.isAdmin);
+    
+    fp = fopen("users.dat", "ab");
+    fwrite(&newUser, sizeof(User), 1, fp);
+    fclose(fp);
+    
+    printf("User registered successfully.\n");
+}
+
+// Admin menu
+void adminMenu() {
+    int choice;
+    
+    do {
+        printf("\nADMIN MENU\n");
+        printf("1. Add Employee\n");
+        printf("2. View Employees\n");
+        printf("3. Search Employee\n");
+        printf("4. Update Employee\n");
+        printf("5. Delete Employee\n");
+        printf("6. Calculate Salary\n");
+        printf("7. Record Attendance\n");
+        printf("8. Manage Leaves\n");
+        printf("9. Generate Payslip\n");
+        printf("10. Track Performance\n");
+        printf("11. Generate Payroll Report\n");
+        printf("12. Register New User\n");
+        printf("13. Sort Employees\n");
+        printf("0. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        
+        switch (choice) {
+            case 1:
+                addEmployee();
+                break;
+            case 2:
+                viewEmployees();
+                break;
+            case 3:
+                searchEmployee();
+                break;
+            case 4:
+                updateEmployee();
+                break;
+            case 5:
+                deleteEmployee();
+                break;
+            case 6:
+                calculateSalary();
+                break;
+            case 7:
+                recordAttendance();
+                break;
+            case 8:
+                manageLeaves();
+                break;
+            case 9:
+                generatePayslip();
+                break;
+            case 10:
+                trackPerformance();
+                break;
+            case 11:
+                generatePayrollReport();
+                break;
+            case 12:
+                registerUser();
+                break;
+            case 13:
+                sortEmployees();
+                break;
+            case 0:
+                printf("Exiting...\n");
+                saveEmployeeData();
+                break;
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+    } while (choice != 0);
+}
+
+// Employee menu
+void employeeMenu() {
+    int choice;
+    int empId = -1;
+    
+    // Find employee ID for current user
+    for (int i = 0; i < employeeCount; i++) {
+        if (strcmp(employees[i].name, currentUser.username) == 0) {
+            empId = employees[i].id;
+            break;
+        }
+    }
+    
+    do {
+        printf("\nEMPLOYEE MENU\n");
+        printf("1. View My Details\n");
+        printf("2. Apply for Leave\n");
+        printf("3. View My Attendance\n");
+        printf("4. View My Payslip\n");
+        printf("0. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        
+        switch (choice) {
+            case 1:
+                if (empId != -1) {
+                    for (int i = 0; i < employeeCount; i++) {
+                        if (employees[i].id == empId) {
+                            printf("\nEmployee ID: %d\n", employees[i].id);
+                            printf("Name: %s\n", employees[i].name);
+                            printf("Department: %s\n", employees[i].department);
+                            printf("Position: %s\n", employees[i].position);
+                            printf("Base Salary: %.2f\n", employees[i].baseSalary);
+                            printf("Sick Leave Balance: %d\n", employees[i].sickLeaveBalance);
+                            printf("Vacation Balance: %d\n", employees[i].vacationBalance);
+                            break;
+                        }
+                    }
+                } else {
+                    printf("Employee record not found.\n");
+                }
+                break;
+            case 2:
+                recordLeave();
+                break;
+            case 3:
+                viewAttendance();
+                break;
+            case 4:
+                // View personal payslip
+                if (empId != -1) {
+                    int month, year;
+                    printf("Enter month (1-12): ");
+                    scanf("%d", &month);
+                    printf("Enter year: ");
+                    scanf("%d", &year);
+                    
+                    FILE *fp = fopen("payroll.dat", "rb");
+                    if (fp != NULL) {
+                        PayrollRecord record;
+                        int found = 0;
+                        
+                        while (fread(&record, sizeof(PayrollRecord), 1, fp)) {
+                            if (record.employeeId == empId && record.month == month && record.year == year) {
+                                found = 1;
+                                
+                                printf("\nPAYSLIP\n");
+                                printf("Employee ID: %d\n", record.employeeId);
+                                printf("Month/Year: %d/%d\n", record.month, record.year);
+                                printf("Days Present: %d\n", record.daysPresent);
+                                printf("Days Absent: %d\n", record.daysAbsent);
+                                printf("Overtime Hours: %.2f\n", record.overtimeHours);
+                                printf("Gross Salary: %.2f\n", record.grossSalary);
+                                printf("Bonus Amount: %.2f\n", record.bonusAmount);
+                                printf("Tax Deducted: %.2f\n", record.taxDeducted);
+                                printf("Net Salary: %.2f\n", record.netSalary);
+                                break;
+                            }
+                        }
+                        
+                        fclose(fp);
+                        
+                        if (!found) {
+                            printf("Payslip not found for the specified month and year.\n");
+                        }
+                    } else {
+                        printf("No payroll records found.\n");
+                    }
+                } else {
+                    printf("Employee record not found.\n");
+                }
+                break;
+            case 0:
+                printf("Exiting...\n");
+                break;
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+    } while (choice != 0);
+}
+
+// Add a new employee
+void addEmployee() {
+    if (employeeCount >= MAX_EMPLOYEES) {
+        printf("Maximum employee limit reached.\n");
+        return;
+    }
+    
+    Employee emp;
+    
+    printf("\nADD EMPLOYEE\n");
+    printf("Employee ID: ");
+    scanf("%d", &emp.id);
+    
+    // Check if ID already exists
+    for (int i = 0; i < employeeCount; i++) {
+        if (employees[i].id == emp.id) {
+            printf("Employee ID already exists.\n");
+            return;
+        }
+    }
+    
+    printf("Name: ");
+    scanf(" %[^\n]", emp.name);
+    printf("Department: ");
+    scanf(" %[^\n]", emp.department);
+    printf("Position: ");
+    scanf(" %[^\n]", emp.position);
+    printf("Is Hourly Paid (1 for Yes, 0 for No): ");
+    scanf("%d", &emp.isHourly);
+    
+    if (emp.isHourly) {
+        printf("Hourly Rate: ");
+        scanf("%f", &emp.hourlyRate);
+        printf("Working Hours Per Day: ");
+        scanf("%d", &emp.workingHoursPerDay);
+        emp.baseSalary = emp.hourlyRate * emp.workingHoursPerDay * 22; // Assuming 22 working days in a month
+    } else {
+        printf("Base Salary: ");
+        scanf("%f", &emp.baseSalary);
+    }
+    
+    printf("Performance Rating (1-Poor, 2-Average, 3-Good, 4-Excellent): ");
+    scanf("%d", &emp.performanceRating);
+    printf("Payment Mode (1-Cash, 2-Bank Transfer, 3-Check): ");
+    scanf("%d", &emp.paymentMode);
+    
+    // Initialize leave balances
+    emp.sickLeaveBalance = 12; // 12 sick days per year
+    emp.vacationBalance = 15; // 15 vacation days per year
+    
+    employees[employeeCount++] = emp;
+    saveEmployeeData();
+    
+    printf("Employee added successfully.\n");
+}
+
+// View all employees
+void viewEmployees() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    printf("\nEMPLOYEE LIST\n");
+    printf("ID\tName\t\tDepartment\tPosition\tSalary\n");
+    printf("----------------------------------------------------------\n");
+    
+    for (int i = 0; i < employeeCount; i++) {
+        printf("%d\t%-15s\t%-10s\t%-10s\t%.2f\n", 
+               employees[i].id, 
+               employees[i].name, 
+               employees[i].department, 
+               employees[i].position, 
+               employees[i].baseSalary);
+    }
+}
+
+// Search for an employee
+void searchEmployee() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int choice;
+    printf("\nSEARCH EMPLOYEE\n");
+    printf("1. Search by ID\n");
+    printf("2. Search by Name\n");
+    printf("3. Search by Department\n");
+    printf("Enter your choice: ");
+    scanf("%d", &choice);
+    
+    switch (choice) {
+        case 1: {
+            int id;
+            printf("Enter Employee ID: ");
+            scanf("%d", &id);
+            
+            for (int i = 0; i < employeeCount; i++) {
+                if (employees[i].id == id) {
+                    printf("\nEmployee Found\n");
+                    printf("ID: %d\n", employees[i].id);
+                    printf("Name: %s\n", employees[i].name);
+                    printf("Department: %s\n", employees[i].department);
+                    printf("Position: %s\n", employees[i].position);
+                    printf("Base Salary: %.2f\n", employees[i].baseSalary);
+                    printf("Is Hourly: %s\n", employees[i].isHourly ? "Yes" : "No");
+                    if (employees[i].isHourly) {
+                        printf("Hourly Rate: %.2f\n", employees[i].hourlyRate);
+                        printf("Working Hours Per Day: %d\n", employees[i].workingHoursPerDay);
+                    }
+                    printf("Performance Rating: %d\n", employees[i].performanceRating);
+                    printf("Payment Mode: %d\n", employees[i].paymentMode);
+                    printf("Sick Leave Balance: %d\n", employees[i].sickLeaveBalance);
+                    printf("Vacation Balance: %d\n", employees[i].vacationBalance);
+                    return;
+                }
+            }
+            
+            printf("Employee not found.\n");
+            break;
+        }
+        case 2: {
+            char name[MAX_NAME_LENGTH];
+            printf("Enter Employee Name: ");
+            scanf(" %[^\n]", name);
+            
+            int found = 0;
+            for (int i = 0; i < employeeCount; i++) {
+                if (strstr(employees[i].name, name) != NULL) {
+                    if (!found) {
+                        printf("\nMatching Employees\n");
+                        printf("ID\tName\t\tDepartment\tPosition\tSalary\n");
+                        printf("----------------------------------------------------------\n");
+                        found = 1;
+                    }
+                    
+                    printf("%d\t%-15s\t%-10s\t%-10s\t%.2f\n", 
+                           employees[i].id, 
+                           employees[i].name, 
+                           employees[i].department, 
+                           employees[i].position, 
+                           employees[i].baseSalary);
+                }
+            }
+            
+            if (!found) {
+                printf("No matching employees found.\n");
+            }
+            break;
+        }
+        case 3: {
+            char department[MAX_DEPT_LENGTH];
+            printf("Enter Department: ");
+            scanf(" %[^\n]", department);
+            
+            int found = 0;
+            for (int i = 0; i < employeeCount; i++) {
+                if (strcmp(employees[i].department, department) == 0) {
+                    if (!found) {
+                        printf("\nEmployees in %s Department\n", department);
+                        printf("ID\tName\t\tPosition\tSalary\n");
+                        printf("--------------------------------------------------\n");
+                        found = 1;
+                    }
+                    
+                    printf("%d\t%-15s\t%-10s\t%.2f\n", 
+                           employees[i].id, 
+                           employees[i].name, 
+                           employees[i].position, 
+                           employees[i].baseSalary);
+                }
+            }
+            
+            if (!found) {
+                printf("No employees found in the specified department.\n");
+            }
+            break;
+        }
+        default:
+            printf("Invalid choice.\n");
+    }
+}
+
+// Update employee details
+void updateEmployee() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int id;
+    printf("\nUPDATE EMPLOYEE\n");
+    printf("Enter Employee ID: ");
+    scanf("%d", &id);
+    
+    for (int i = 0; i < employeeCount; i++) {
+        if (employees[i].id == id) {
+            int choice;
+            printf("\nEmployee Found\n");
+            printf("1. Update Name\n");
+            printf("2. Update Department\n");
+            printf("3. Update Position\n");
+            printf("4. Update Salary\n");
+            printf("5. Update Performance Rating\n");
+            printf("6. Update Payment Mode\n");
+            printf("Enter your choice: ");
+            scanf("%d", &choice);
+            
+            switch (choice) {
+                case 1:
+                    printf("Enter new Name: ");
+                    scanf(" %[^\n]", employees[i].name);
+                    break;
+                case 2:
+                    printf("Enter new Department: ");
+                    scanf(" %[^\n]", employees[i].department);
+                    break;
+                case 3:
+                    printf("Enter new Position: ");
+                    scanf(" %[^\n]", employees[i].position);
+                    break;
+                case 4:
+                    if (employees[i].isHourly) {
+                        printf("Enter new Hourly Rate: ");
+                        scanf("%f", &employees[i].hourlyRate);
+                        printf("Enter new Working Hours Per Day: ");
+                        scanf("%d", &employees[i].workingHoursPerDay);
+                        employees[i].baseSalary = employees[i].hourlyRate * employees[i].workingHoursPerDay * 22;
+                    } else {
+                        printf("Enter new Base Salary: ");
+                        scanf("%f", &employees[i].baseSalary);
+                    }
+                    break;
+                case 5:
+                    printf("Enter new Performance Rating (1-Poor, 2-Average, 3-Good, 4-Excellent): ");
+                    scanf("%d", &employees[i].performanceRating);
+                    break;
+                case 6:
+                    printf("Enter new Payment Mode (1-Cash, 2-Bank Transfer, 3-Check): ");
+                    scanf("%d", &employees[i].paymentMode);
+                    break;
+                default:
+                    printf("Invalid choice.\n");
+                    return;
+            }
+            
+            saveEmployeeData();
+            printf("Employee updated successfully.\n");
+            return;
+        }
+    }
+    
+    printf("Employee not found.\n");
+}
+
+// Delete an employee
+void deleteEmployee() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int id;
+    printf("\nDELETE EMPLOYEE\n");
+    printf("Enter Employee ID: ");
+    scanf("%d", &id);
+    
+    for (int i = 0; i < employeeCount; i++) {
+        if (employees[i].id == id) {
+            // Shift all elements after the deleted employee
+            for (int j = i; j < employeeCount - 1; j++) {
+                employees[j] = employees[j + 1];
+            }
+            
+            employeeCount--;
+            saveEmployeeData();
+            printf("Employee deleted successfully.\n");
+            return;
+        }
+    }
+    
+    printf("Employee not found.\n");
+}
+
+// Calculate salary for an employee
+void calculateSalary() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int id, month, year;
+    printf("\nCALCULATE SALARY\n");
+    printf("Enter Employee ID (0 for all employees): ");
+    scanf("%d", &id);
+    printf("Enter Month (1-12): ");
+    scanf("%d", &month);
+    printf("Enter Year: ");
+    scanf("%d", &year);
+    
+    if (id == 0) {
+        // Calculate for all employees
+        for (int i = 0; i < employeeCount; i++) {
+            calculateEmployeeSalary(employees[i], month, year);
+        }
+    } else {
+        // Calculate for specific employee
+        for (int i = 0; i < employeeCount; i++) {
+            if (employees[i].id == id) {
+                calculateEmployeeSalary(employees[i], month, year);
+                return;
+            }
+        }
+        
+        printf("Employee not found.\n");
+    }
+}
+
+// Calculate salary for a specific employee
+void calculateEmployeeSalary(Employee emp, int month, int year) {
+    PayrollRecord record;
+    record.employeeId = emp.id;
+    record.month = month;
+    record.year = year;
+    
+    // Get attendance data
+    FILE *fp = fopen("attendance.dat", "rb");
+    if (fp != NULL) {
+        AttendanceRecord attendance;
+        record.daysPresent = 0;
+        record.daysAbsent = 0;
+        record.overtimeHours = 0;
+        
+        while (fread(&attendance, sizeof(AttendanceRecord), 1, fp)) {
+            if (attendance.employeeId == emp.id && 
+                attendance.date.month == month && 
+                attendance.date.year == year) {
+                
+                if (attendance.isPresent) {
+                    record.daysPresent++;
+                    
+                    // Calculate overtime
+                    if (emp.isHourly && attendance.hoursWorked > emp.workingHoursPerDay) {
+                        record.overtimeHours += (attendance.hoursWorked - emp.workingHoursPerDay);
+                    }
+                } else {
+                    record.daysAbsent++;
+                }
+            }
+        }
+        
+        fclose(fp);
+    } else {
+        // Assume full attendance if no attendance records
+        record.daysPresent = 22; // Assuming 22 working days in a month
+        record.daysAbsent = 0;
+        record.overtimeHours = 0;
+    }
+    
+    // Calculate gross salary
+    if (emp.isHourly) {
+        // For hourly employees
+        float regularHours = record.daysPresent * emp.workingHoursPerDay;
+        float regularPay = regularHours * emp.hourlyRate;
+        float overtimePay = record.overtimeHours * (emp.hourlyRate * 1.5); // Overtime at 1.5x rate
+        record.grossSalary = regularPay + overtimePay;
+    } else {
+        // For salaried employees
+        float dailyRate = emp.baseSalary / 22; // Assuming 22 working days
+        record.grossSalary = dailyRate * record.daysPresent;
+    }
+    
+    // Calculate bonus
+    record.bonusAmount = calculateBonus(emp);
+    
+    // Add bonus to gross salary
+    record.grossSalary += record.bonusAmount;
+    
+    // Calculate tax
+    record.taxDeducted = calculateTax(record.grossSalary);
+    
+    // Calculate net salary
+    record.netSalary = record.grossSalary - record.taxDeducted;
+    
+    // Save payroll record
+    fp = fopen("payroll.dat", "ab");
+    fwrite(&record, sizeof(PayrollRecord), 1, fp);
+    fclose(fp);
+    
+    printf("Salary calculated for Employee ID: %d\n", emp.id);
+    printf("Gross Salary: %.2f\n", record.grossSalary);
+    printf("Tax Deducted: %.2f\n", record.taxDeducted);
+    printf("Net Salary: %.2f\n", record.netSalary);
+}
+
+// Calculate tax based on salary brackets
+float calculateTax(float salary) {
+    float tax = 0;
+    
+    if (salary <= TAX_BRACKET_1) {
+        tax = salary * 0.1; // 10% tax
+    } else if (salary <= TAX_BRACKET_2) {
+        tax = TAX_BRACKET_1 * 0.1 + (salary - TAX_BRACKET_1) * 0.2; // 20% tax on amount above bracket 1
+    } else if (salary <= TAX_BRACKET_3) {
+        tax = TAX_BRACKET_1 * 0.1 + (TAX_BRACKET_2 - TAX_BRACKET_1) * 0.2 + (salary - TAX_BRACKET_2) * 0.3; // 30% tax on amount above bracket 2
+    } else {
+        tax = TAX_BRACKET_1 * 0.1 + (TAX_BRACKET_2 - TAX_BRACKET_1) * 0.2 + (TAX_BRACKET_3 - TAX_BRACKET_2) * 0.3 + (salary - TAX_BRACKET_3) * 0.35; // 35% tax on amount above bracket 3
+    }
+    
+    return tax;
+}
+
+// Calculate bonus based on performance
+float calculateBonus(Employee emp) {
+    float bonus = 0;
+    
+    // Performance-based bonus
+    switch (emp.performanceRating) {
+        case POOR:
+            bonus = 0; // No bonus for poor performance
+            break;
+        case AVERAGE:
+            bonus = emp.baseSalary * 0.05; // 5% bonus for average performance
+            break;
+        case GOOD:
+            bonus = emp.baseSalary * 0.1; // 10% bonus for good performance
+            break;
+        case EXCELLENT:
+            bonus = emp.baseSalary * 0.15; // 15% bonus for excellent performance
+            break;
+    }
+    
+    // Check if it's a festival month (e.g., December for Christmas bonus)
+    time_t t = time(NULL);
+    struct tm *tm = localtime(&t);
+    int currentMonth = tm->tm_mon + 1;
+    
+    if (currentMonth == 12) {
+        bonus += emp.baseSalary * 0.1; // Additional 10% festival bonus in December
+    }
+    
+    return bonus;
+}
+
+// Record attendance for employees
+void recordAttendance() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int id;
+    printf("\nRECORD ATTENDANCE\n");
+    printf("Enter Employee ID (0 for all employees): ");
+    scanf("%d", &id);
+    
+    AttendanceRecord attendance;
+    printf("Enter Date (DD MM YYYY): ");
+    scanf("%d %d %d", &attendance.date.day, &attendance.date.month, &attendance.date.year);
+    
+    FILE *fp = fopen("attendance.dat", "ab");
+    
+    if (id == 0) {
+        // Record for all employees
+        for (int i = 0; i < employeeCount; i++) {
+            attendance.employeeId = employees[i].id;
+            printf("Employee: %s (ID: %d)\n", employees[i].name, employees[i].id);
+            printf("Present (1 for Yes, 0 for No): ");
+            scanf("%d", &attendance.isPresent);
+            
+            if (attendance.isPresent && employees[i].isHourly) {
+                printf("Hours Worked: ");
+                scanf("%f", &attendance.hoursWorked);
+            } else {
+                attendance.hoursWorked = employees[i].isHourly ? employees[i].workingHoursPerDay : 0;
+            }
+            
+            fwrite(&attendance, sizeof(AttendanceRecord), 1, fp);
+        }
+    } else {
+        // Record for specific employee
+        int found = 0;
+        for (int i = 0; i < employeeCount; i++) {
+            if (employees[i].id == id) {
+                found = 1;
+                attendance.employeeId = id;
+                printf("Employee: %s\n", employees[i].name);
+                printf("Present (1 for Yes, 0 for No): ");
+                scanf("%d", &attendance.isPresent);
+                
+                if (attendance.isPresent && employees[i].isHourly) {
+                    printf("Hours Worked: ");
+                    scanf("%f", &attendance.hoursWorked);
+                } else {
+                    attendance.hoursWorked = employees[i].isHourly ? employees[i].workingHoursPerDay : 0;
+                }
+                
+                fwrite(&attendance, sizeof(AttendanceRecord), 1, fp);
+                break;
+            }
+        }
+        
+        if (!found) {
+            printf("Employee not found.\n");
+            fclose(fp);
+            return;
+        }
+    }
+    
+    fclose(fp);
+    printf("Attendance recorded successfully.\n");
+}
+
+// View attendance records
+void viewAttendance() {
+    int id, month, year;
+    printf("\nVIEW ATTENDANCE\n");
+    
+    if (currentUser.isAdmin) {
+        printf("Enter Employee ID (0 for all employees): ");
+        scanf("%d", &id);
+    } else {
+        // Find employee ID for current user
+        id = -1;
+        for (int i = 0; i < employeeCount; i++) {
+            if (strcmp(employees[i].name, currentUser.username) == 0) {
+                id = employees[i].id;
+                break;
+            }
+        }
+        
+        if (id == -1) {
+            printf("Employee record not found.\n");
+            return;
+        }
+    }
+    
+    printf("Enter Month (1-12): ");
+    scanf("%d", &month);
+    printf("Enter Year: ");
+    scanf("%d", &year);
+    
+    FILE *fp = fopen("attendance.dat", "rb");
+    if (fp == NULL) {
+        printf("No attendance records found.\n");
+        return;
+    }
+    
+    AttendanceRecord attendance;
+    int found = 0;
+    
+    printf("\nATTENDANCE RECORDS\n");
+    printf("ID\tName\t\tDate\t\tStatus\tHours\n");
+    printf("----------------------------------------------------------\n");
+    
+    while (fread(&attendance, sizeof(AttendanceRecord), 1, fp)) {
+        if ((id == 0 || attendance.employeeId == id) && 
+            attendance.date.month == month && 
+            attendance.date.year == year) {
+            
+            found = 1;
+            char name[MAX_NAME_LENGTH] = "";
+            
+            // Find employee name
+            for (int i = 0; i < employeeCount; i++) {
+                if (employees[i].id == attendance.employeeId) {
+                    strcpy(name, employees[i].name);
+                    break;
+                }
+            }
+            
+            printf("%d\t%-15s\t%02d/%02d/%04d\t%s\t%.1f\n", 
+                   attendance.employeeId, 
+                   name, 
+                   attendance.date.day, 
+                   attendance.date.month, 
+                   attendance.date.year, 
+                   attendance.isPresent ? "Present" : "Absent", 
+                   attendance.hoursWorked);
+        }
+    }
+    
+    fclose(fp);
+    
+    if (!found) {
+        printf("No attendance records found for the specified criteria.\n");
+    }
+}
+
+// Manage leaves
+void manageLeaves() {
+    int choice;
+    
+    printf("\nLEAVE MANAGEMENT\n");
+    printf("1. Apply for Leave\n");
+    printf("2. Approve Leave Requests\n");
+    printf("3. View Leave Requests\n");
+    printf("Enter your choice: ");
+    scanf("%d", &choice);
+    
+    switch (choice) {
+        case 1:
+            recordLeave();
+            break;
+        case 2:
+            if (currentUser.isAdmin) {
+                approveLeave();
+            } else {
+                printf("Access denied. Only admins can approve leave requests.\n");
+            }
+            break;
+        case 3:
+            viewLeaveRequests();
+            break;
+        default:
+            printf("Invalid choice.\n");
+    }
+}
+
+// Record a leave request
+void recordLeave() {
+    LeaveRecord leave;
+    int empId = -1;
+    
+    if (currentUser.isAdmin) {
+        printf("\nAPPLY FOR LEAVE\n");
+        printf("Enter Employee ID: ");
+        scanf("%d", &leave.employeeId);
+    } else {
+        // Find employee ID for current user
+        for (int i = 0; i < employeeCount; i++) {
+            if (strcmp(employees[i].name, currentUser.username) == 0) {
+                empId = employees[i].id;
+                break;
+            }
+        }
+        
+        if (empId == -1) {
+            printf("Employee record not found.\n");
+            return;
+        }
+        
+        leave.employeeId = empId;
+    }
+    
+    // Find employee in the array
+    int empIndex = -1;
+    for (int i = 0; i < employeeCount; i++) {
+        if (employees[i].id == leave.employeeId) {
+            empIndex = i;
+            break;
+        }
+    }
+    
+    if (empIndex == -1) {
+        printf("Employee not found.\n");
+        return;
+    }
+    
+    printf("Leave Type (1-Sick, 2-Vacation, 3-Unpaid): ");
+    scanf("%d", &leave.leaveType);
+    printf("Start Date (DD MM YYYY): ");
+    scanf("%d %d %d", &leave.startDate.day, &leave.startDate.month, &leave.startDate.year);
+    printf("End Date (DD MM YYYY): ");
+    scanf("%d %d %d", &leave.endDate.day, &leave.endDate.month, &leave.endDate.year);
+    
+    // Calculate number of days
+    // This is a simplified calculation and doesn't account for weekends or holidays
+    struct tm start_tm = {0};
+    struct tm end_tm = {0};
+    
+    start_tm.tm_year = leave.startDate.year - 1900;
+    start_tm.tm_mon = leave.startDate.month - 1;
+    start_tm.tm_mday = leave.startDate.day;
+    
+    end_tm.tm_year = leave.endDate.year - 1900;
+    end_tm.tm_mon = leave.endDate.month - 1;
+    end_tm.tm_mday = leave.endDate.day;
+    
+    time_t start_time = mktime(&start_tm);
+    time_t end_time = mktime(&end_tm);
+    
+    double diff_seconds = difftime(end_time, start_time);
+    leave.numberOfDays = (int)(diff_seconds / (60 * 60 * 24)) + 1; // +1 to include both start and end days
+    
+    // Check leave balance
+    if (leave.leaveType == SICK_LEAVE && leave.numberOfDays > employees[empIndex].sickLeaveBalance) {
+        printf("Insufficient sick leave balance. Available: %d days\n", employees[empIndex].sickLeaveBalance);
+        return;
+    } else if (leave.leaveType == VACATION && leave.numberOfDays > employees[empIndex].vacationBalance) {
+        printf("Insufficient vacation balance. Available: %d days\n", employees[empIndex].vacationBalance);
+        return;
+    }
+    
+    // Set approval status
+    if (currentUser.isAdmin) {
+        leave.isApproved = 1; // Auto-approve if admin is applying
+        
+        // Update leave balance
+        if (leave.leaveType == SICK_LEAVE) {
+            employees[empIndex].sickLeaveBalance -= leave.numberOfDays;
+        } else if (leave.leaveType == VACATION) {
+            employees[empIndex].vacationBalance -= leave.numberOfDays;
+        }
+        
+        saveEmployeeData();
+    } else {
+        leave.isApproved = 0; // Pending approval if employee is applying
+    }
+    
+    // Save leave record
+    FILE *fp = fopen("leaves.dat", "ab");
+    fwrite(&leave, sizeof(LeaveRecord), 1, fp);
+    fclose(fp);
+    
+    printf("Leave request submitted successfully for %d days.\n", leave.numberOfDays);
+}
+
+// Approve leave requests
+void approveLeave() {
+    FILE *fp = fopen("leaves.dat", "rb");
+    if (fp == NULL) {
+        printf("No leave requests found.\n");
+        return;
+    }
+    
+    LeaveRecord leave;
+    int found = 0;
+    
+    printf("\nPENDING LEAVE REQUESTS\n");
+    printf("ID\tName\t\tType\tStart\t\tEnd\t\tDays\n");
+    printf("----------------------------------------------------------\n");
+    
+    // First, display all pending requests
+    while (fread(&leave, sizeof(LeaveRecord), 1, fp)) {
+        if (!leave.isApproved) {
+            found = 1;
+            char name[MAX_NAME_LENGTH] = "";
+            char leaveType[10] = "";
+            
+            // Find employee name
+            for (int i = 0; i < employeeCount; i++) {
+                if (employees[i].id == leave.employeeId) {
+                    strcpy(name, employees[i].name);
+                    break;
+                }
+            }
+            
+            // Get leave type string
+            switch (leave.leaveType) {
+                case SICK_LEAVE:
+                    strcpy(leaveType, "Sick");
+                    break;
+                case VACATION:
+                    strcpy(leaveType, "Vacation");
+                    break;
+                case UNPAID_LEAVE:
+                    strcpy(leaveType, "Unpaid");
+                    break;
+            }
+            
+            printf("%d\t%-15s\t%-7s\t%02d/%02d/%04d\t%02d/%02d/%04d\t%d\n", 
+                   leave.employeeId, 
+                   name, 
+                   leaveType, 
+                   leave.startDate.day, 
+                   leave.startDate.month, 
+                   leave.startDate.year, 
+                   leave.endDate.day, 
+                   leave.endDate.month, 
+                   leave.endDate.year, 
+                   leave.numberOfDays);
+        }
+    }
+    
+    fclose(fp);
+    
+    if (!found) {
+        printf("No pending leave requests found.\n");
+        return;
+    }
+    
+    // Now process approvals
+    int empId;
+    Date startDate;
+    
+    printf("\nAPPROVE LEAVE\n");
+    printf("Enter Employee ID: ");
+    scanf("%d", &empId);
+    printf("Enter Start Date (DD MM YYYY): ");
+    scanf("%d %d %d", &startDate.day, &startDate.month, &startDate.year);
+    
+    // Open files for reading and writing
+    FILE *fpRead = fopen("leaves.dat", "rb");
+    FILE *fpWrite = fopen("leaves_temp.dat", "wb");
+    
+    found = 0;
+    while (fread(&leave, sizeof(LeaveRecord), 1, fpRead)) {
+        if (leave.employeeId == empId && 
+            leave.startDate.day == startDate.day && 
+            leave.startDate.month == startDate.month && 
+            leave.startDate.year == startDate.year && 
+            !leave.isApproved) {
+            
+            found = 1;
+            int choice;
+            printf("Approve leave request? (1-Yes, 0-No): ");
+            scanf("%d", &choice);
+            
+            if (choice) {
+                leave.isApproved = 1;
+                
+                // Update leave balance
+                for (int i = 0; i < employeeCount; i++) {
+                    if (employees[i].id == leave.employeeId) {
+                        if (leave.leaveType == SICK_LEAVE) {
+                            employees[i].sickLeaveBalance -= leave.numberOfDays;
+                        } else if (leave.leaveType == VACATION) {
+                            employees[i].vacationBalance -= leave.numberOfDays;
+                        }
+                        break;
+                    }
+                }
+                
+                saveEmployeeData();
+                printf("Leave request approved.\n");
+            } else {
+                printf("Leave request rejected.\n");
+            }
+        }
+        
+        fwrite(&leave, sizeof(LeaveRecord), 1, fpWrite);
+    }
+    
+    fclose(fpRead);
+    fclose(fpWrite);
+    
+    if (!found) {
+        printf("Leave request not found.\n");
+        remove("leaves_temp.dat");
+    } else {
+        remove("leaves.dat");
+        rename("leaves_temp.dat", "leaves.dat");
+    }
+}
+
+// View leave requests
+void viewLeaveRequests() {
+    int id;
+    
+    if (currentUser.isAdmin) {
+        printf("\nVIEW LEAVE REQUESTS\n");
+        printf("Enter Employee ID (0 for all employees): ");
+        scanf("%d", &id);
+    } else {
+        // Find employee ID for current user
+        id = -1;
+        for (int i = 0; i < employeeCount; i++) {
+            if (strcmp(employees[i].name, currentUser.username) == 0) {
+                id = employees[i].id;
+                break;
+            }
+        }
+        
+        if (id == -1) {
+            printf("Employee record not found.\n");
+            return;
+        }
+    }
+    
+    FILE *fp = fopen("leaves.dat", "rb");
+    if (fp == NULL) {
+        printf("No leave requests found.\n");
+        return;
+    }
+    
+    LeaveRecord leave;
+    int found = 0;
+    
+    printf("\nLEAVE REQUESTS\n");
+    printf("ID\tName\t\tType\tStart\t\tEnd\t\tDays\tStatus\n");
+    printf("------------------------------------------------------------------\n");
+    
+    while (fread(&leave, sizeof(LeaveRecord), 1, fp)) {
+        if (id == 0 || leave.employeeId == id) {
+            found = 1;
+            char name[MAX_NAME_LENGTH] = "";
+            char leaveType[10] = "";
+            char status[10] = "";
+            
+            // Find employee name
+            for (int i = 0; i < employeeCount; i++) {
+                if (employees[i].id == leave.employeeId) {
+                    strcpy(name, employees[i].name);
+                    break;
+                }
+            }
+            
+            // Get leave type string
+            switch (leave.leaveType) {
+                case SICK_LEAVE:
+                    strcpy(leaveType, "Sick");
+                    break;
+                case VACATION:
+                    strcpy(leaveType, "Vacation");
+                    break;
+                case UNPAID_LEAVE:
+                    strcpy(leaveType, "Unpaid");
+                    break;
+            }
+            
+            // Get status string
+            strcpy(status, leave.isApproved ? "Approved" : "Pending");
+            
+            printf("%d\t%-15s\t%-7s\t%02d/%02d/%04d\t%02d/%02d/%04d\t%d\t%s\n", 
+                   leave.employeeId, 
+                   name, 
+                   leaveType, 
+                   leave.startDate.day, 
+                   leave.startDate.month, 
+                   leave.startDate.year, 
+                   leave.endDate.day, 
+                   leave.endDate.month, 
+                   leave.endDate.year, 
+                   leave.numberOfDays, 
+                   status);
+        }
+    }
+    
+    fclose(fp);
+    
+    if (!found) {
+        printf("No leave requests found for the specified criteria.\n");
+    }
+}
+
+// Generate payslip for an employee
+void generatePayslip() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int id, month, year;
+    printf("\nGENERATE PAYSLIP\n");
+    printf("Enter Employee ID: ");
+    scanf("%d", &id);
+    printf("Enter Month (1-12): ");
+    scanf("%d", &month);
+    printf("Enter Year: ");
+    scanf("%d", &year);
+    
+    // Find employee
+    int empIndex = -1;
+    for (int i = 0; i < employeeCount; i++) {
+        if (employees[i].id == id) {
+            empIndex = i;
+            break;
+        }
+    }
+    
+    if (empIndex == -1) {
+        printf("Employee not found.\n");
+        return;
+    }
+    
+    // Find payroll record
+    FILE *fp = fopen("payroll.dat", "rb");
+    if (fp == NULL) {
+        printf("No payroll records found. Please calculate salary first.\n");
+        return;
+    }
+    
+    PayrollRecord record;
+    int found = 0;
+    
+    while (fread(&record, sizeof(PayrollRecord), 1, fp)) {
+        if (record.employeeId == id && record.month == month && record.year == year) {
+            found = 1;
+            break;
+        }
+    }
+    
+    fclose(fp);
+    
+    if (!found) {
+        printf("Payroll record not found. Please calculate salary first.\n");
+        return;
+    }
+    
+    // Generate payslip
+    printf("\nPAYSLIP\n");
+    printf("----------------------------------------------------------\n");
+    printf("Employee ID: %d\n", id);
+    printf("Name: %s\n", employees[empIndex].name);
+    printf("Department: %s\n", employees[empIndex].department);
+    printf("Position: %s\n", employees[empIndex].position);
+    printf("Month/Year: %d/%d\n", month, year);
+    printf("----------------------------------------------------------\n");
+    printf("Days Present: %d\n", record.daysPresent);
+    printf("Days Absent: %d\n", record.daysAbsent);
+    printf("Overtime Hours: %.2f\n", record.overtimeHours);
+    printf("----------------------------------------------------------\n");
+    printf("Basic Salary: %.2f\n", employees[empIndex].baseSalary);
+    printf("Bonus Amount: %.2f\n", record.bonusAmount);
+    printf("Gross Salary: %.2f\n", record.grossSalary);
+    printf("Tax Deducted: %.2f\n", record.taxDeducted);
+    printf("----------------------------------------------------------\n");
+    printf("Net Salary: %.2f\n", record.netSalary);
+    printf("Payment Mode: ");
+    
+    switch (employees[empIndex].paymentMode) {
+        case CASH:
+            printf("Cash\n");
+            break;
+        case BANK_TRANSFER:
+            printf("Bank Transfer\n");
+            break;
+        case CHECK:
+            printf("Check\n");
+            break;
+    }
+    
+    printf("----------------------------------------------------------\n");
+    
+    // Export payslip to file
+    exportPayslipToFile(record, employees[empIndex]);
+}
+
+// Export payslip to a text file
+void exportPayslipToFile(PayrollRecord record, Employee emp) {
+    char filename[MAX_PATH];
+    sprintf(filename, "payslip_%d_%d_%d.txt", emp.id, record.month, record.year);
+    
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL) {
+        printf("Error creating payslip file.\n");
+        return;
+    }
+    
+    fprintf(fp, "PAYSLIP\n");
+    fprintf(fp, "----------------------------------------------------------\n");
+    fprintf(fp, "Employee ID: %d\n", emp.id);
+    fprintf(fp, "Name: %s\n", emp.name);
+    fprintf(fp, "Department: %s\n", emp.department);
+    fprintf(fp, "Position: %s\n", emp.position);
+    fprintf(fp, "Month/Year: %d/%d\n", record.month, record.year);
+    fprintf(fp, "----------------------------------------------------------\n");
+    fprintf(fp, "Days Present: %d\n", record.daysPresent);
+    fprintf(fp, "Days Absent: %d\n", record.daysAbsent);
+    fprintf(fp, "Overtime Hours: %.2f\n", record.overtimeHours);
+    fprintf(fp, "----------------------------------------------------------\n");
+    fprintf(fp, "Basic Salary: %.2f\n", emp.baseSalary);
+    fprintf(fp, "Bonus Amount: %.2f\n", record.bonusAmount);
+    fprintf(fp, "Gross Salary: %.2f\n", record.grossSalary);
+    fprintf(fp, "Tax Deducted: %.2f\n", record.taxDeducted);
+    fprintf(fp, "----------------------------------------------------------\n");
+    fprintf(fp, "Net Salary: %.2f\n", record.netSalary);
+    fprintf(fp, "Payment Mode: ");
+    
+    switch (emp.paymentMode) {
+        case CASH:
+            fprintf(fp, "Cash\n");
+            break;
+        case BANK_TRANSFER:
+            fprintf(fp, "Bank Transfer\n");
+            break;
+        case CHECK:
+            fprintf(fp, "Check\n");
+            break;
+    }
+    
+    fprintf(fp, "----------------------------------------------------------\n");
+    
+    fclose(fp);
+    printf("Payslip exported to %s\n", filename);
+}
+
+// Track employee performance
+void trackPerformance() {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    int id;
+    printf("\nTRACK PERFORMANCE\n");
+    printf("Enter Employee ID: ");
+    scanf("%d", &id);
+    
+    // Find employee
+    int empIndex = -1;
+    for (int i = 0; i < employeeCount; i++) {
+        if (employees[i].id == id) {
+            empIndex = i;
+            break;
+        }
+    }
+    
+    if (empIndex == -1) {
+        printf("Employee not found.\n");
+        return;
+    }
+    
+    printf("Current Performance Rating: ");
+    switch (employees[empIndex].performanceRating) {
+        case POOR:
+            printf("Poor\n");
+            break;
+        case AVERAGE:
+            printf("Average\n");
+            break;
+        case GOOD:
+            printf("Good\n");
+            break;
+        case EXCELLENT:
+            printf("Excellent\n");
+            break;
+    }
+    
+    printf("Enter new Performance Rating (1-Poor, 2-Average, 3-Good, 4-Excellent): ");
+    scanf("%d", &employees[empIndex].performanceRating);
+    
+    saveEmployeeData();
+    printf("Performance rating updated successfully.\n");
+}
+
+// Generate payroll report
+void generatePayrollReport() {
+    int month, year;
+    printf("\nGENERATE PAYROLL REPORT\n");
+    printf("Enter Month (1-12): ");
+    scanf("%d", &month);
+    printf("Enter Year: ");
+    scanf("%d", &year);
+    
+    FILE *fp = fopen("payroll.dat", "rb");
+    if (fp == NULL) {
+        printf("No payroll records found.\n");
+        return;
+    }
+    
+    PayrollRecord record;
+    int found = 0;
+    float totalGrossSalary = 0, totalTax = 0, totalNetSalary = 0;
+    
+    printf("\nPAYROLL REPORT FOR %d/%d\n", month, year);
+    printf("ID\tName\t\tDepartment\tGross\t\tTax\t\tNet\n");
+    printf("-----------------------------------------------------------------------------------\n");
+    
+    while (fread(&record, sizeof(PayrollRecord), 1, fp)) {
+        if (record.month == month && record.year == year) {
+            found = 1;
+            char name[MAX_NAME_LENGTH] = "";
+            char department[MAX_DEPT_LENGTH] = "";
+            
+            // Find employee details
+            for (int i = 0; i < employeeCount; i++) {
+                if (employees[i].id == record.employeeId) {
+                    strcpy(name, employees[i].name);
+                    strcpy(department, employees[i].department);
+                    break;
+                }
+            }
+            
+            printf("%d\t%-15s\t%-10s\t%.2f\t\t%.2f\t\t%.2f\n", 
+                   record.employeeId, 
+                   name, 
+                   department, 
+                   record.grossSalary, 
+                   record.taxDeducted, 
+                   record.netSalary);
+            
+            totalGrossSalary += record.grossSalary;
+            totalTax += record.taxDeducted;
+            totalNetSalary += record.netSalary;
+        }
+    }
+    
+    fclose(fp);
+    
+    if (!found) {
+        printf("No payroll records found for the specified month and year.\n");
+    } else {
+        printf("-----------------------------------------------------------------------------------\n");
+        printf("TOTAL\t\t\t\t\t%.2f\t\t%.2f\t\t%.2f\n", 
+               totalGrossSalary, 
+               totalTax, 
+               totalNetSalary);
+        
+        // Export report to file
+        char filename[MAX_PATH];
+        sprintf(filename, "payroll_report_%d_%d.txt", month, year);
+        
+        FILE *fpReport = fopen(filename, "w");
+        if (fpReport == NULL) {
+            printf("Error creating report file.\n");
+            return;
+        }
+        
+        fprintf(fpReport, "PAYROLL REPORT FOR %d/%d\n", month, year);
+        fprintf(fpReport, "ID\tName\t\tDepartment\tGross\t\tTax\t\tNet\n");
+        fprintf(fpReport, "-----------------------------------------------------------------------------------\n");
+        
+        // Reopen payroll file
+        fp = fopen("payroll.dat", "rb");
+        
+        while (fread(&record, sizeof(PayrollRecord), 1, fp)) {
+            if (record.month == month && record.year == year) {
+                char name[MAX_NAME_LENGTH] = "";
+                char department[MAX_DEPT_LENGTH] = "";
+                
+                // Find employee details
+                for (int i = 0; i < employeeCount; i++) {
+                    if (employees[i].id == record.employeeId) {
+                        strcpy(name, employees[i].name);
+                        strcpy(department, employees[i].department);
+                        break;
+                    }
+                }
+                
+                fprintf(fpReport, "%d\t%-15s\t%-10s\t%.2f\t\t%.2f\t\t%.2f\n", 
+                       record.employeeId, 
+                       name, 
+                       department, 
+                       record.grossSalary, 
+                       record.taxDeducted, 
+                       record.netSalary);
+            }
+        }
+        
+        fclose(fp);
+        
+        fprintf(fpReport, "-----------------------------------------------------------------------------------\n");
+        fprintf(fpReport, "TOTAL\t\t\t\t\t%.2f\t\t%.2f\t\t%.2f\n", 
+               totalGrossSalary, 
+               totalTax, 
+               totalNetSalary);
+        
+        fclose(fpReport);
+        printf("Report exported to %s\n", filename);
+    }
+}
+
+// Sort employees
+void sortEmployees() {
+    if (employeeCount <= 1) {
+        printf("Not enough employees to sort.\n");
+        return;
+    }
+    
+    int choice;
+    printf("\nSORT EMPLOYEES\n");
+    printf("1. Sort by ID\n");
+    printf("2. Sort by Name\n");
+    printf("3. Sort by Department\n");
+    printf("4. Sort by Salary (Ascending)\n");
+    printf("5. Sort by Salary (Descending)\n");
+    printf("Enter your choice: ");
+    scanf("%d", &choice);
+    
+    switch (choice) {
+        case 1: // Sort by ID
+            for (int i = 0; i < employeeCount - 1; i++) {
+                for (int j = 0; j < employeeCount - i - 1; j++) {
+                    if (employees[j].id > employees[j + 1].id) {
+                        Employee temp = employees[j];
+                        employees[j] = employees[j + 1];
+                        employees[j + 1] = temp;
+                    }
+                }
+            }
+            break;
+        case 2: // Sort by Name
+            for (int i = 0; i < employeeCount - 1; i++) {
+                for (int j = 0; j < employeeCount - i - 1; j++) {
+                    if (strcmp(employees[j].name, employees[j + 1].name) > 0) {
+                        Employee temp = employees[j];
+                        employees[j] = employees[j + 1];
+                        employees[j + 1] = temp;
+                    }
+                }
+            }
+            break;
+        case 3: // Sort by Department
+            for (int i = 0; i < employeeCount - 1; i++) {
+                for (int j = 0; j < employeeCount - i - 1; j++) {
+                    if (strcmp(employees[j].department, employees[j + 1].department) > 0) {
+                        Employee temp = employees[j];
+                        employees[j] = employees[j + 1];
+                        employees[j + 1] = temp;
+                    }
+                }
+            }
+            break;
+        case 4: // Sort by Salary (Ascending)
+            for (int i = 0; i < employeeCount - 1; i++) {
+                for (int j = 0; j < employeeCount - i - 1; j++) {
+                    if (employees[j].baseSalary > employees[j + 1].baseSalary) {
+                        Employee temp = employees[j];
+                        employees[j] = employees[j + 1];
+                        employees[j + 1] = temp;
+                    }
+                }
+            }
+            break;
+        case 5: // Sort by Salary (Descending)
+            for (int i = 0; i < employeeCount - 1; i++) {
+                for (int j = 0; j < employeeCount - i - 1; j++) {
+                    if (employees[j].baseSalary < employees[j + 1].baseSalary) {
+                        Employee temp = employees[j];
+                        employees[j] = employees[j + 1];
+                        employees[j + 1] = temp;
+                    }
+                }
+            }
+            break;
+        default:
+            printf("Invalid choice.\n");
+            return;
+    }
+    
+    printf("Employees sorted successfully.\n");
+    viewEmployees();
+}
+
+// Save employee data to file
+void saveEmployeeData() {
+    FILE *fp = fopen("employees.dat", "wb");
+    fwrite(employees, sizeof(Employee), employeeCount, fp);
+    fclose(fp);
+}
+
+// Load employee data from file
+void loadEmployeeData() {
+    FILE *fp = fopen("employees.dat", "rb");
+    if (fp != NULL) {
+        employeeCount = fread(employees, sizeof(Employee), MAX_EMPLOYEES, fp);
+        fclose(fp);
+    }
+}
+
+// Process payroll for all employees
+void processPayroll(int month, int year) {
+    if (employeeCount == 0) {
+        printf("No employees found.\n");
+        return;
+    }
+    
+    for (int i = 0; i < employeeCount; i++) {
+        calculateEmployeeSalary(employees[i], month, year);
+    }
+    
+    printf("Payroll processed successfully for %d/%d.\n", month, year);
+}

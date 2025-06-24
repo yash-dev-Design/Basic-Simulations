@@ -1,0 +1,203 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_TRANSACTIONS 10  // Maximum number of transactions to store
+
+// Structure to hold account details
+struct Account 
+{
+    int accountNumber;
+    float balance;
+    float transactions[MAX_TRANSACTIONS];
+    int transactionCount;
+    char userID[20];
+    char password[20];
+    char name[50];
+    int age;
+    char gender[10];
+};
+
+// Function declarations
+void deposit(struct Account* account, float amount);
+void withdraw(struct Account* account, float amount);
+void balanceInquiry(struct Account account);
+void viewTransactions(struct Account account);
+void displayMenu();
+int login(struct Account* account);
+void createAccount(struct Account* account);
+
+int main() {
+    struct Account account = {123456, 0.0, {0}, 0, "", "", "", 0, ""};  // Initialize account
+    int choice;
+    float amount;
+    char hasAccount;
+
+    // Check if the user has an account
+    printf("Do you already have an account? (y/n): ");
+    scanf(" %c", &hasAccount);
+
+    if (hasAccount == 'n' || hasAccount == 'N') {
+        createAccount(&account);
+    }
+
+    // User login
+    if (login(&account) == 0) {
+        printf("Invalid login credentials. Exiting...\n");
+        return 0;
+    }
+
+    while (1) {
+        displayMenu();
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:  // Deposit
+                printf("Enter amount to deposit: ");
+                scanf("%f", &amount);
+                deposit(&account, amount);
+                break;
+            case 2:  // Withdraw
+                printf("Enter amount to withdraw: ");
+                scanf("%f", &amount);
+                withdraw(&account, amount);
+                break;
+            case 3:  // Balance Inquiry
+                balanceInquiry(account);
+                break;
+            case 4:  // View Previous Transactions
+                viewTransactions(account);
+                break;
+            case 5:  // Exit
+                printf("Thank you for using ATM. Please Visit Again!\n");
+                return 0;
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+    }
+
+    return 0;
+}
+
+// Function to create a new account
+void createAccount(struct Account* account) 
+{
+    printf("Creating a new account...\n");
+    printf("Enter your name: ");
+    getchar(); // Consume newline character
+    fgets(account->name, sizeof(account->name), stdin);
+    account->name[strcspn(account->name, "\n")] = '\0'; // Remove newline
+
+    printf("Enter your age: ");
+    scanf("%d", &account->age);
+
+    printf("Enter your gender: ");
+    scanf("%s", account->gender);
+
+    printf("Create a User ID: ");
+    scanf("%s", account->userID);
+
+    printf("Create a Password: ");
+    scanf("%s", account->password);
+
+    printf("\nAccount successfully created!\n");
+    printf("Account Details:\n");
+    printf("Name: %s\n", account->name);
+    printf("Age: %d\n", account->age);
+    printf("Gender: %s\n", account->gender);
+    printf("User ID: %s\n", account->userID);
+    printf("Account Number: %d\n", account->accountNumber);
+}
+
+// Function to handle login authentication
+int login(struct Account* account) 
+{
+    char userInput[20], passInput[20];
+
+    printf("Enter User ID: ");
+    scanf("%s", userInput);
+    printf("Enter Password: ");
+    scanf("%s", passInput);
+
+    if (strcmp(userInput, account->userID) == 0 && strcmp(passInput, account->password) == 0) 
+    {
+        printf("Login successful!\n");
+        return 1;  // Successful login
+    } 
+    else 
+    {
+        return 0;  // Unsuccessful login
+    }
+}
+
+// Function to deposit money into the account
+void deposit(struct Account* account, float amount) 
+{
+    if (amount > 0) 
+    {
+        account->balance += amount;
+        if (account->transactionCount < MAX_TRANSACTIONS) 
+        {
+            account->transactions[account->transactionCount] = amount;
+            account->transactionCount++;
+        }
+        printf("Deposited: $%.2f\n", amount);
+    } 
+    else 
+    {
+        printf("Invalid deposit amount.\n");
+    }
+}
+
+// Function to withdraw money from the account
+void withdraw(struct Account* account, float amount) 
+{
+    if (amount > 0 && amount <= account->balance) 
+    {
+        account->balance -= amount;
+        if (account->transactionCount < MAX_TRANSACTIONS) 
+        {
+            account->transactions[account->transactionCount] = -amount;  // Negative value for withdrawal
+            account->transactionCount++;
+        }
+        printf("Withdrawn: $%.2f\n", amount);
+    } 
+    else 
+    {
+        printf("Insufficient funds or invalid amount.\n");
+    }
+}
+
+// Function to view account balance
+void balanceInquiry(struct Account account) 
+{
+    printf("Current balance: $%.2f\n", account.balance);
+}
+
+// Function to view previous transactions
+void viewTransactions(struct Account account) 
+{
+    printf("Previous transactions:\n");
+    for (int i = 0; i < account.transactionCount; i++) 
+    {
+        if (account.transactions[i] > 0)
+        {
+            printf("Deposit: $%.2f\n", account.transactions[i]);
+        }
+        else
+        {
+            printf("Withdrawal: $%.2f\n", -account.transactions[i]);
+        }
+    }
+}
+
+// Function to display the ATM menu
+void displayMenu() 
+{
+    printf("\nATM Menu:\n");
+    printf("1. Deposit\n");
+    printf("2. Withdraw\n");
+    printf("3. Balance Inquiry\n");
+    printf("4. View Previous Transactions\n");
+    printf("5. Exit\n");
+}
